@@ -1,3 +1,6 @@
+Prérequis
+Installez une Debian.
+
 📌 Plan d'Automatisation :
 
     Script principal (setup_jail.sh) → Automatisation de la mise en place du chroot SSH.
