@@ -8,7 +8,7 @@
 ## 4 - Installer Git
     apt install git
 ## 5 - Installer dos2unix
-    apt install git
+    apt install dos2unix
 ## 6 - Rappatrier le dossier JAIL dans /opt/
     cd /opt
     git clone https://github.com/Slurptheworld/Jail.git
