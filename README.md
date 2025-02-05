@@ -20,6 +20,12 @@
 ## 9 - Lancer l'installation du Jail
     ./setup_jail.sh
 
+## infos
+Utilisateur :
+    Jailed
+Mot de passe : 
+    password123
+    
 
 📌 Plan d'Automatisation :
 
