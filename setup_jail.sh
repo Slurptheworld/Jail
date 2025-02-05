@@ -27,4 +27,67 @@ fi
 echo "✅ Redémarrage du service SSH..."
 sudo systemctl restart "$SSH_SERVICE"
 
-# Création du groupe et de l'utilisateur po
+# Création du groupe et de l'utilisateur pour le chroot
+echo "✅ Création de l'utilisateur chroot..."
+sudo groupadd sshchroot
+sudo useradd -m -d /var/www/html -s /bin/bash -G sshchroot jailed
+echo "jailed:password123" | sudo chpasswd  # Définir un mot de passe
+
+# Configuration de SSH pour le chroot
+echo "✅ Configuration de SSH..."
+echo "Match Group sshchroot
+    ChrootDirectory /var/www/html
+    AllowTcpForwarding no
+    X11Forwarding no
+" | sudo tee -a /etc/ssh/sshd_config
+
+# Redémarrer SSH pour appliquer les modifications
+echo "✅ Redémarrage du service SSH après modification..."
+sudo systemctl restart "$SSH_SERVICE"
+
+# Création de la structure du chroot
+echo "✅ Création de la structure chroot..."
+sudo mkdir -p /var/www/html/{bin,lib,lib64,etc,home,tmp,dev}
+
+# Correction des permissions du chroot
+sudo chown root:root /var/www/html
+sudo chmod 755 /var/www/html
+
+# Copie des commandes essentielles dans le chroot
+echo "✅ Copie des binaires essentiels..."
+for cmd in bash sh ls cat echo mkdir pwd rm touch; do
+    sudo cp /bin/$cmd /var/www/html/bin/
+done
+
+# Copie des bibliothèques nécessaires à `bash`
+echo "✅ Copie des bibliothèques requises..."
+LIBS=(
+    /lib/x86_64-linux-gnu/libtinfo.so.6
+    /lib/x86_64-linux-gnu/libc.so.6
+    /lib/x86_64-linux-gnu/libpcre2-8.so.0
+    /lib/x86_64-linux-gnu/libselinux.so.1
+    /lib64/ld-linux-x86-64.so.2
+)
+
+for lib in "${LIBS[@]}"; do
+    if [ -f "$lib" ]; then
+        sudo cp "$lib" /var/www/html/lib/
+    else
+        echo "⚠️ Bibliothèque manquante : $lib"
+    fi
+done
+
+# Copie automatique des dépendances de bash (sécurisation)
+ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib/ 2>/dev/null
+ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib64/ 2>/dev/null
+
+# Vérification que bash fonctionne dans le chroot
+echo "✅ Vérification de l'exécution de bash dans le chroot..."
+sudo chroot /var/www/html /bin/bash -c "echo 'Bash fonctionne dans le chroot !'"
+
+# Correction des permissions finales
+sudo chown -R root:root /var/www/html
+sudo chmod -R 755 /var/www/html
+
+echo "✅ Installation terminée !"
+echo "🎯 Chroot SSH mis en place. Connecte-toi avec : ssh jailed@<IP>"
