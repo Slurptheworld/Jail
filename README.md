@@ -28,7 +28,7 @@ Mot de passe :
     
 
 📌 Plan d'Automatisation :
-
+Pensez à passer en dos2unix l'ensemble des scripts .sh :)
     Script principal (setup_jail.sh) → Automatisation de la mise en place du chroot SSH.
     Scripts individuels pour les vulnérabilités :
         vuln_suid.sh → Ajoute un binaire avec SUID.
