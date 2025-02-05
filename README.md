@@ -2,8 +2,9 @@
 
 ## 1 - Installez une Debian.
 ## 2 - Ajouter l'option serveur SSH
-## 3 - Se mettre en Root
+## 3 - Se mettre en Root & Mise à jour 
     su -
+    apt update
 ## 4 - Installer Git
     apt install git
 ## 5 - Installer dos2unix
