@@ -12,6 +12,7 @@
 ## 6 - Rappatrier le dossier JAIL dans /opt/
     cd /opt
     git clone https://github.com/Slurptheworld/Jail.git
+    cd Jail
 ## 7 - Rendre le fichier lisible setup_jail.sh
     dos2unix setup_jail.sh
 ## 8 - Mettre les droits d'excution sur le fichier
