@@ -33,8 +33,13 @@ sudo groupadd sshchroot
 sudo useradd -m -d /var/www/html -s /bin/bash -G sshchroot jailed
 echo "jailed:password123" | sudo chpasswd  # Définir un mot de passe
 
-# Configuration de SSH pour le chroot
-echo "✅ Configuration de SSH..."
+# Modification du fichier sshd_config pour éviter les conflits
+echo "✅ Modification de sshd_config..."
+sudo sed -i 's/^Subsystem sftp.*/#Subsystem sftp disabled/g' /etc/ssh/sshd_config
+sudo sed -i 's/^X11Forwarding yes/X11Forwarding no/g' /etc/ssh/sshd_config
+sudo sed -i 's/^UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config
+
+# Ajout de la configuration du chroot
 echo "Match Group sshchroot
     ChrootDirectory /var/www/html
     AllowTcpForwarding no
@@ -77,9 +82,15 @@ for lib in "${LIBS[@]}"; do
     fi
 done
 
-# Copie automatique des dépendances de bash (sécurisation)
+# Copie automatique des dépendances de bash
 ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib/ 2>/dev/null
 ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib64/ 2>/dev/null
+
+# Vérification et copie de `ld-linux-x86-64.so.2` (si absent)
+if [ ! -f "/var/www/html/lib64/ld-linux-x86-64.so.2" ]; then
+    echo "⚠️ ld-linux-x86-64.so.2 manquant. Copie en cours..."
+    sudo cp /lib64/ld-linux-x86-64.so.2 /var/www/html/lib64/
+fi
 
 # Vérification que bash fonctionne dans le chroot
 echo "✅ Vérification de l'exécution de bash dans le chroot..."
