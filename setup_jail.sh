@@ -52,39 +52,36 @@ sudo systemctl restart "$SSH_SERVICE"
 
 # Création de la structure du chroot
 echo "✅ Création de la structure chroot..."
-sudo mkdir -p /var/www/html/{bin,lib,lib64,etc,home,tmp,dev}
+sudo mkdir -p /var/www/html/{bin,lib,lib64,etc,home,tmp,dev,usr/bin,usr/lib,usr/share}
 
 # Correction des permissions du chroot
 sudo chown root:root /var/www/html
 sudo chmod 755 /var/www/html
 
-# Copie des commandes essentielles dans le chroot
+# Installation de Python3 et Vim si absent
+echo "✅ Installation de Python3 et Vim..."
+sudo apt update
+sudo apt install -y python3 vim
+
+# Copie des binaires essentiels dans le chroot
 echo "✅ Copie des binaires essentiels..."
-for cmd in bash sh ls cat echo mkdir pwd rm touch; do
-    sudo cp /bin/$cmd /var/www/html/bin/
-done
+BINAIRES=(bash sh ls cat echo mkdir pwd rm touch python3 vim)
 
-# Copie des bibliothèques nécessaires à `bash`
-echo "✅ Copie des bibliothèques requises..."
-LIBS=(
-    /lib/x86_64-linux-gnu/libtinfo.so.6
-    /lib/x86_64-linux-gnu/libc.so.6
-    /lib/x86_64-linux-gnu/libpcre2-8.so.0
-    /lib/x86_64-linux-gnu/libselinux.so.1
-    /lib64/ld-linux-x86-64.so.2
-)
-
-for lib in "${LIBS[@]}"; do
-    if [ -f "$lib" ]; then
-        sudo cp "$lib" /var/www/html/lib/
+for cmd in "${BINAIRES[@]}"; do
+    if command -v "$cmd" &> /dev/null; then
+        sudo cp "$(command -v $cmd)" /var/www/html/bin/
     else
-        echo "⚠️ Bibliothèque manquante : $lib"
+        echo "⚠️ Binaire $cmd introuvable, installation peut-être incomplète."
     fi
 done
 
-# Copie automatique des dépendances de bash
-ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib/ 2>/dev/null
-ldd /bin/bash | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp '{}' /var/www/html/lib64/ 2>/dev/null
+# Copie des bibliothèques nécessaires à `bash`, `python3` et `vim`
+echo "✅ Copie des bibliothèques requises..."
+BIN_LIBS=(/bin/bash /usr/bin/python3 /usr/bin/vim)
+
+for bin in "${BIN_LIBS[@]}"; do
+    ldd "$bin" | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp -v '{}' /var/www/html/lib/ 2>/dev/null
+done
 
 # Vérification et copie de `ld-linux-x86-64.so.2` (si absent)
 if [ ! -f "/var/www/html/lib64/ld-linux-x86-64.so.2" ]; then
@@ -101,4 +98,4 @@ sudo chown -R root:root /var/www/html
 sudo chmod -R 755 /var/www/html
 
 echo "✅ Installation terminée !"
-echo "🎯 Chroot SSH mis en place. Connecte-toi avec : ssh jailed@<IP>"
+echo "🎯 Chroot SSH mis en place avec Python3 et Vim ! Connecte-toi avec : ssh jailed@<IP>"
