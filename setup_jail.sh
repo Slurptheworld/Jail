@@ -5,7 +5,7 @@
 # ║  Ce script crée un environnement chroot SSH isolé avec un jeu limité     ║
 # ║  de binaires pour pratiquer l'élévation de privilèges Linux.             ║
 # ║                                                                           ║
-# ║  Corrections v2 :                                                         ║
+# ║  Corrections v2.2 :                                                       ║
 # ║   - echo/pwd retirés (builtins bash, pas de binaire sur disque)          ║
 # ║   - Installation automatique de vim, python3 et gcc si absents           ║
 # ║   - Copie des libs avec arborescence complète (fix chroot crash)         ║
@@ -14,6 +14,9 @@
 # ║   - Ajout des binaires manquants (find, grep, chmod, id, whoami, su, gcc)║
 # ║   - Configuration automatique du chroot SSH (Match User dans sshd_config)║
 # ║   - Retrait de la règle sudoers vim (déplacée dans vuln_sudo_vim.sh)     ║
+# ║   - bash au lieu de rbash (isolation par ChrootDirectory SSH)            ║
+# ║   - Permissions /dev restaurées après chmod -R 755                       ║
+# ║   - /etc/passwd et /etc/group créés dans le chroot                       ║
 # ║                                                                           ║
 # ║  Usage : sudo ./setup_jail.sh                                            ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -196,7 +199,31 @@ mknod -m 666 "$JAIL/dev/tty" c 5 0 2>/dev/null
 mknod -m 444 "$JAIL/dev/urandom" c 1 9 2>/dev/null
 
 # ═══════════════════════════════════════════════════════════════════
-# 9. Correction des permissions finales
+# 9. Création des fichiers utilisateurs dans le chroot
+# ═══════════════════════════════════════════════════════════════════
+# Sans /etc/passwd et /etc/group, les commandes whoami, id et su
+# ne peuvent pas résoudre les noms d'utilisateurs (UID → nom).
+# Ces fichiers sont aussi un prérequis pour vuln_passwd.sh et vuln_sudo_vim.sh.
+# ═══════════════════════════════════════════════════════════════════
+echo "✅ Création des fichiers utilisateurs dans le chroot..."
+JAILED_UID=$(id -u jailed)
+JAILED_GID=$(id -g jailed)
+
+cat > "$JAIL/etc/passwd" <<EOF
+root:x:0:0:root:/root:/bin/bash
+jailed:x:${JAILED_UID}:${JAILED_GID}:jailed:/:/bin/bash
+EOF
+
+cat > "$JAIL/etc/group" <<EOF
+root:x:0:
+jailed:x:${JAILED_GID}:
+EOF
+
+chmod 644 "$JAIL/etc/passwd"
+chmod 644 "$JAIL/etc/group"
+
+# ═══════════════════════════════════════════════════════════════════
+# 10. Correction des permissions finales (ChrootDirectory exige root:root 755)
 # ═══════════════════════════════════════════════════════════════════
 echo "✅ Application des permissions..."
 # IMPORTANT : Pour que ChrootDirectory SSH fonctionne,
@@ -205,9 +232,14 @@ echo "✅ Application des permissions..."
 chown -R root:root "$JAIL"
 chmod -R 755 "$JAIL"
 chmod 777 "$JAIL/tmp"
+# Restaurer les permissions des devices APRÈS le chmod global
+# (le chmod -R 755 les écrase sinon → "Permission denied" sur /dev/null)
+chmod 666 "$JAIL/dev/null" 2>/dev/null
+chmod 666 "$JAIL/dev/tty" 2>/dev/null
+chmod 444 "$JAIL/dev/urandom" 2>/dev/null
 
 # ═══════════════════════════════════════════════════════════════════
-# 10. Configuration du chroot SSH (Match User)
+# 11. Configuration du chroot SSH (Match User)
 # ═══════════════════════════════════════════════════════════════════
 # FIX v2 : Sans cette configuration, l'utilisateur jailed se connecte
 #           en SSH et arrive sur le système COMPLET au lieu d'être
@@ -239,7 +271,7 @@ systemctl restart "$SSH_SERVICE"
 echo "   ✅ Service SSH redémarré"
 
 # ═══════════════════════════════════════════════════════════════════
-# 11. Test de validation du chroot
+# 12. Test de validation du chroot
 # ═══════════════════════════════════════════════════════════════════
 echo "✅ Vérification de l'environnement..."
 echo ""

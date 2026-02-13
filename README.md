@@ -82,7 +82,7 @@ chmod +x *.sh
 ./setup_jail.sh
 ```
 
-> **Note :** Le script `setup_jail.sh` installe automatiquement les dépendances manquantes (vim, python3, gcc) si elles ne sont pas présentes sur le système.
+> **Note :** Le script `setup_jail.sh` installe automatiquement les dépendances manquantes (vim, python3, gcc), crée `/etc/passwd` et `/etc/group` dans le chroot (nécessaires pour `whoami`, `id`, `su`), et configure le chroot SSH.
 
 ---
 

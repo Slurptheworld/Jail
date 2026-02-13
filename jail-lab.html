@@ -717,7 +717,7 @@
 │                           <span class="comment"># id, whoami, su, gcc</span>
 ├── <span class="path">lib/</span> &amp; <span class="path">lib64/</span>          <span class="comment"># Bibliotheques dynamiques (arborescence reelle)</span>
 ├── <span class="path">etc/</span>                    <span class="comment"># Fichiers de config</span>
-│   ├── passwd, group       <span class="comment"># Crees par vuln_sudo_vim.sh</span>
+│   ├── passwd, group       <span class="comment"># Crees par setup_jail.sh (enrichis par vuln_sudo_vim.sh)</span>
 │   ├── sudoers, sudoers.d  <span class="comment"># Crees par vuln_sudo_vim.sh</span>
 │   ├── pam.d/              <span class="comment"># PAM (cree par vuln_sudo_vim.sh)</span>
 │   └── <span class="path">cron.d/</span>            <span class="comment"># Cible : vuln_cron.sh</span>
