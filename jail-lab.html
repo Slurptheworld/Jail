@@ -639,7 +639,7 @@
   </div>
 
   <div class="info-box" style="margin-top: 1.5rem;">
-    <strong>Identifiants par défaut :</strong> utilisateur <code>user</code> / mot de passe <code>password123</code>.
+    <strong>Identifiants par défaut :</strong> utilisateur <code>jailed</code> / mot de passe <code>password123</code>.
     Connexion : <code>ssh jailed@&lt;IP_VM&gt;</code>
   </div>
 
@@ -649,7 +649,7 @@
     <h2>Architecture de la Jail</h2>
   </div>
   <p class="section-desc">
-    Le script <code>setup_jail.sh</code> crée un chroot dans <code>/home/jailed</code> avec un jeu limité de binaires et bibliothèques. L'utilisateur <code>user</code> est enfermé dans un shell restreint <code>rbash</code>.
+    Le script <code>setup_jail.sh</code> crée un chroot dans <code>/home/jailed</code> avec un jeu limité de binaires et bibliothèques. L'utilisateur <code>jailed</code> est enfermé dans un shell restreint <code>rbash</code>.
   </p>
 
   <div class="code-block">
@@ -1063,7 +1063,7 @@ void <span class="cmd">_init</span>() {
         <div class="code-block">
           <div class="code-header"><span>bash — extrait de setup_jail.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
           <pre><span class="comment"># Ajout dans /etc/sudoers.d/ : l'utilisateur peut lancer vim en root</span>
-<span class="cmd">echo</span> <span class="string">"user    ALL=(ALL)   NOPASSWD: /usr/bin/vim"</span> \
+<span class="cmd">echo</span> <span class="string">"jailed    ALL=(ALL)   NOPASSWD: /usr/bin/vim"</span> \
   | <span class="cmd">sudo</span> tee <span class="path">/etc/sudoers.d/vuln_vim</span>
 <span class="comment"># NOPASSWD = pas besoin de mot de passe pour sudo vim</span></pre>
         </div>
@@ -1140,7 +1140,7 @@ void <span class="cmd">_init</span>() {
     <div class="code-block">
       <div class="code-header"><span>bash — nettoyage complet</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
       <pre><span class="comment"># Supprimer l'utilisateur et son répertoire</span>
-<span class="cmd">sudo</span> userdel <span class="flag">-r</span> user
+<span class="cmd">sudo</span> userdel <span class="flag">-r</span> jailed
 
 <span class="comment"># Supprimer le groupe SSH chroot</span>
 <span class="cmd">sudo</span> groupdel sshchroot
