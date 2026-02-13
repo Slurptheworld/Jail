@@ -1,10 +1,18 @@
 #!/bin/bash
 #
 # ╔═══════════════════════════════════════════════════════════════════════════╗
-# ║                     CLEANUP JAIL - Nettoyage complet                      ║
+# ║                     CLEANUP JAIL v2 — Nettoyage complet                  ║
 # ║                                                                           ║
 # ║  Ce script supprime toutes les vulnérabilités et fichiers créés par       ║
 # ║  le lab Jail pour repartir sur une Debian propre.                         ║
+# ║                                                                           ║
+# ║  Actions :                                                                ║
+# ║   - Démontage de /proc dans le chroot                                    ║
+# ║   - Suppression de l'utilisateur jailed                                  ║
+# ║   - Suppression du répertoire /home/jailed                               ║
+# ║   - Suppression des règles sudoers vulnérables                           ║
+# ║   - Suppression du bloc Match User dans sshd_config                      ║
+# ║   - Nettoyage des tâches cron et binaires SUID suspects                  ║
 # ║                                                                           ║
 # ║  Usage : sudo ./cleanup_jail.sh                                           ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -19,7 +27,7 @@ NC='\033[0m' # No Color
 
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║           🧹 NETTOYAGE DU LAB JAIL - DÉBUT                        ║${NC}"
+echo -e "${CYAN}║           🧹 NETTOYAGE DU LAB JAIL v2 — DÉBUT                    ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -33,9 +41,21 @@ fi
 CLEANED=0
 
 # ═══════════════════════════════════════════════════════════════════
-# 1. Suppression de l'utilisateur "jailed"
+# 1. Démontage de /proc dans le chroot (AVANT toute suppression)
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[1/7] Vérification de l'utilisateur 'jailed'...${NC}"
+echo -e "${YELLOW}[1/9] Démontage de /proc dans le chroot...${NC}"
+if mountpoint -q /home/jailed/proc 2>/dev/null; then
+    umount /home/jailed/proc 2>/dev/null
+    echo -e "${GREEN}   ✅ /home/jailed/proc démonté${NC}"
+    ((CLEANED++))
+else
+    echo -e "   ⏭️  /proc non monté dans le chroot (OK)"
+fi
+
+# ═══════════════════════════════════════════════════════════════════
+# 2. Suppression de l'utilisateur "jailed"
+# ═══════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}[2/9] Vérification de l'utilisateur 'jailed'...${NC}"
 if id "jailed" &>/dev/null; then
     userdel -r jailed 2>/dev/null
     echo -e "${GREEN}   ✅ Utilisateur 'jailed' supprimé${NC}"
@@ -45,15 +65,13 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 2. Suppression de la règle sudo vulnérable
+# 3. Suppression des règles sudo vulnérables (hôte)
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[2/7] Vérification des règles sudo vulnérables...${NC}"
+echo -e "${YELLOW}[3/9] Vérification des règles sudo vulnérables...${NC}"
 if [ -f /etc/sudoers.d/vuln_vim ]; then
     rm -f /etc/sudoers.d/vuln_vim
     echo -e "${GREEN}   ✅ /etc/sudoers.d/vuln_vim supprimé${NC}"
     ((CLEANED++))
-else
-    echo -e "   ⏭️  Pas de règle sudo vuln_vim (OK)"
 fi
 
 # Vérifier d'autres règles sudoers suspectes
@@ -65,10 +83,39 @@ for f in /etc/sudoers.d/vuln_*; do
     fi
 done
 
+echo -e "   ⏭️  Règles sudo vérifiées"
+
 # ═══════════════════════════════════════════════════════════════════
-# 3. Suppression des répertoires du lab
+# 4. Suppression du bloc Match User dans sshd_config
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[3/7] Suppression des répertoires du lab...${NC}"
+echo -e "${YELLOW}[4/9] Suppression de la configuration SSH chroot...${NC}"
+
+SSHD_CONFIG="/etc/ssh/sshd_config"
+if grep -q "^Match User jailed" "$SSHD_CONFIG" 2>/dev/null; then
+    # Supprimer le bloc complet entre les marqueurs
+    sed -i '/^# === JAIL CHROOT SSH (ajouté par setup_jail.sh) ===/,/^# === FIN JAIL CHROOT SSH ===/d' "$SSHD_CONFIG"
+    # Si les marqueurs ne sont pas présents, supprimer le bloc Match User manuellement
+    if grep -q "^Match User jailed" "$SSHD_CONFIG" 2>/dev/null; then
+        sed -i '/^Match User jailed/,/^$/d' "$SSHD_CONFIG"
+    fi
+    echo -e "${GREEN}   ✅ Bloc 'Match User jailed' supprimé de sshd_config${NC}"
+    ((CLEANED++))
+
+    # Redémarrer SSH
+    if systemctl list-units --type=service | grep -q "ssh.service"; then
+        systemctl restart ssh
+    else
+        systemctl restart sshd
+    fi
+    echo -e "${GREEN}   ✅ Service SSH redémarré${NC}"
+else
+    echo -e "   ⏭️  Pas de bloc Match User jailed dans sshd_config (OK)"
+fi
+
+# ═══════════════════════════════════════════════════════════════════
+# 5. Suppression des répertoires du lab
+# ═══════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}[5/9] Suppression des répertoires du lab...${NC}"
 
 if [ -d /home/jailed ]; then
     rm -rf /home/jailed
@@ -79,9 +126,9 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 4. Suppression des tâches cron malveillantes
+# 6. Suppression des tâches cron malveillantes
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[4/7] Vérification des tâches cron vulnérables...${NC}"
+echo -e "${YELLOW}[6/9] Vérification des tâches cron vulnérables...${NC}"
 
 if [ -f /etc/cron.d/vuln_cron ]; then
     rm -f /etc/cron.d/vuln_cron
@@ -101,9 +148,9 @@ done
 echo -e "   ⏭️  Tâches cron vérifiées"
 
 # ═══════════════════════════════════════════════════════════════════
-# 5. Vérification et correction des binaires SUID suspects
+# 7. Vérification et correction des binaires SUID suspects
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[5/7] Recherche de binaires SUID suspects...${NC}"
+echo -e "${YELLOW}[7/9] Recherche de binaires SUID suspects...${NC}"
 
 # Liste des binaires qui ne devraient JAMAIS être SUID
 SUSPECT_SUIDS=("/bin/bash" "/usr/bin/bash" "/bin/sh" "/usr/bin/python3" "/usr/bin/python" "/usr/bin/env")
@@ -128,9 +175,9 @@ done
 echo -e "   ⏭️  Binaires SUID vérifiés"
 
 # ═══════════════════════════════════════════════════════════════════
-# 6. Suppression du groupe sshchroot si existant
+# 8. Suppression du groupe sshchroot si existant
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[6/7] Vérification du groupe sshchroot...${NC}"
+echo -e "${YELLOW}[8/9] Vérification du groupe sshchroot...${NC}"
 if getent group sshchroot &>/dev/null; then
     groupdel sshchroot 2>/dev/null
     echo -e "${GREEN}   ✅ Groupe 'sshchroot' supprimé${NC}"
@@ -140,9 +187,9 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 7. Vérification des permissions /etc/passwd
+# 9. Vérification des permissions /etc/passwd
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[7/7] Vérification des permissions /etc/passwd...${NC}"
+echo -e "${YELLOW}[9/9] Vérification des permissions /etc/passwd...${NC}"
 PASSWD_PERMS=$(stat -c '%a' /etc/passwd)
 if [ "$PASSWD_PERMS" != "644" ]; then
     chmod 644 /etc/passwd
@@ -171,6 +218,15 @@ if [ $CLEANED -gt 0 ]; then
 else
     echo -e "${CYAN}║${NC}   ${GREEN}✅ Système déjà propre - rien à nettoyer${NC}"
 fi
+echo -e "${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}   Éléments nettoyés :"
+echo -e "${CYAN}║${NC}   • /proc démonté du chroot"
+echo -e "${CYAN}║${NC}   • Utilisateur jailed supprimé"
+echo -e "${CYAN}║${NC}   • Répertoire /home/jailed supprimé"
+echo -e "${CYAN}║${NC}   • Règles sudoers vulnérables supprimées"
+echo -e "${CYAN}║${NC}   • Configuration SSH chroot supprimée"
+echo -e "${CYAN}║${NC}   • Tâches cron malveillantes supprimées"
+echo -e "${CYAN}║${NC}   • Binaires SUID suspects vérifiés"
 echo -e "${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}   La Debian est maintenant propre."
 echo -e "${CYAN}║${NC}   Tu peux relancer ${YELLOW}./setup_jail.sh${NC} pour réinstaller le lab."
