@@ -18,24 +18,24 @@ Ce lab permet de pratiquer différentes techniques d'élévation de privilèges 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    DEBIAN SERVER                        │
-│                                                         │
-│   ┌─────────────────────────────────────────────────┐   │
-│   │              CHROOT JAIL (/home/user)           │   │
-│   │                                                 │   │
-│   │   /bin/       → Binaires (bash, ls, cat...)    │   │
-│   │   /lib/       → Librairies système             │   │
-│   │   /etc/       → Configurations                 │   │
-│   │   /tmp/       → Fichiers temporaires           │   │
-│   │   /dev/       → Devices (null, tty, urandom)   │   │
-│   │                                                 │   │
-│   │   Utilisateur : user                           │   │
-│   │   Mot de passe : password123                   │   │
-│   │                                                 │   │
-│   └─────────────────────────────────────────────────┘   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      DEBIAN SERVER                          │
+│                                                             │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │            CHROOT JAIL (/home/jailed)               │   │
+│   │                                                     │   │
+│   │   /bin/       → Binaires (bash, ls, cat...)        │   │
+│   │   /lib/       → Librairies système                 │   │
+│   │   /etc/       → Configurations                     │   │
+│   │   /tmp/       → Fichiers temporaires               │   │
+│   │   /dev/       → Devices (null, tty, urandom)       │   │
+│   │                                                     │   │
+│   │   Utilisateur : jailed                             │   │
+│   │   Mot de passe : password123                       │   │
+│   │                                                     │   │
+│   └─────────────────────────────────────────────────────┘   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -45,7 +45,6 @@ Ce lab permet de pratiquer différentes techniques d'élévation de privilèges 
 ### Prérequis
 
 - Debian 11/12 (installation minimale)
-- Serveur SSH activé
 - Accès root
 
 ### Déploiement
@@ -81,11 +80,11 @@ chmod +x *.sh
 
 | Utilisateur | Mot de passe   | Accès         |
 |-------------|----------------|---------------|
-| `user`      | `password123`  | SSH → Chroot  |
+| `jailed`    | `password123`  | SSH → Chroot  |
 
 ```bash
 # Connexion depuis la machine attaquante
-ssh user@<IP_DEBIAN>
+ssh jailed@<IP_DEBIAN>
 ```
 
 ---
@@ -96,7 +95,7 @@ Chaque script active une vulnérabilité spécifique dans l'environnement chroot
 
 | Script              | Vulnérabilité              | Exploitation                                    |
 |---------------------|----------------------------|-------------------------------------------------|
-| `vuln_suid.sh`      | SUID sur bash/python3      | `/home/user/bin/bash -p`                        |
+| `vuln_suid.sh`      | SUID sur bash/python3      | `/home/jailed/bin/bash -p`                      |
 | `vuln_passwd.sh`    | /etc/passwd writable       | Ajout d'un utilisateur root                     |
 | `vuln_cron.sh`      | Cron job modifiable        | Injection de commande via script malveillant    |
 | `vuln_ldpreload.sh` | LD_PRELOAD exploitable     | Shared library injection                        |
@@ -122,18 +121,18 @@ sudo ./cleanup_jail.sh
 ```
 
 Ce script supprime :
-- Utilisateurs `user` et `jailed`
-- Règles sudo vulnérables (`/etc/sudoers.d/vuln_*`)
-- Répertoires du lab (`/home/user`, `/var/www/html`)
-- Tâches cron malveillantes
-- Binaires SUID suspects
-- Entrées frauduleuses dans `/etc/passwd`
+- L'utilisateur `jailed`
+- Les règles sudo vulnérables (`/etc/sudoers.d/vuln_*`)
+- Le répertoire `/home/jailed`
+- Les tâches cron malveillantes
+- Les binaires SUID suspects
+- Les entrées frauduleuses dans `/etc/passwd`
 
 ---
 
 ## Ressources
 
-- Documentation complète : `jail-lab.html`
+- Documentation complète : `Tuto.docx`
 - [GTFOBins](https://gtfobins.github.io/) - Liste des binaires exploitables
 - [HackTricks - Linux PrivEsc](https://book.hacktricks.xyz/linux-hardening/privilege-escalation)
 

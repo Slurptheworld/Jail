@@ -24,31 +24,31 @@ sudo systemctl restart "$SSH_SERVICE"
 echo "✅ Création de l'utilisateur JAIL vulnérable..."
 
 # Vérifier si l'utilisateur existe déjà
-if id "user" &>/dev/null; then
-    echo "⚠️  L'utilisateur 'user' existe déjà. Suppression et recréation..."
-    sudo userdel -r user 2>/dev/null
-    sudo rm -rf /home/user 2>/dev/null
+if id "jailed" &>/dev/null; then
+    echo "⚠️  L'utilisateur 'jailed' existe déjà. Suppression et recréation..."
+    sudo userdel -r jailed 2>/dev/null
+    sudo rm -rf /home/jailed 2>/dev/null
 fi
 
-sudo useradd -m -d /home/user -s /bin/rbash user
-echo "user:password123" | sudo chpasswd  # Définir un mot de passe
+sudo useradd -m -d /home/jailed -s /bin/rbash jailed
+echo "jailed:password123" | sudo chpasswd
 
 # Configuration du répertoire de l'utilisateur avec un environnement restreint
 echo "✅ Configuration du home de l'utilisateur..."
-sudo mkdir -p /home/user/bin
-echo 'export PATH=/home/user/bin' | sudo tee -a /home/user/.bashrc
+sudo mkdir -p /home/jailed/bin
+echo 'export PATH=/home/jailed/bin' | sudo tee -a /home/jailed/.bashrc
 
 # Création d'une JAIL minimale
 echo "✅ Création de la structure de la JAIL..."
-sudo mkdir -p /home/user/{bin,lib,lib64,usr/bin,usr/lib}
+sudo mkdir -p /home/jailed/{bin,lib,lib64,usr/bin,usr/lib,tmp,etc,dev}
 
 # Copie des commandes nécessaires dans la JAIL
 echo "✅ Copie des binaires essentiels..."
-BINAIRES=(bash rbash ls cat echo mkdir pwd rm touch python3 vim)
+BINAIRES=(bash rbash ls cat echo mkdir pwd rm touch python3 vim env)
 
 for cmd in "${BINAIRES[@]}"; do
     if command -v "$cmd" &> /dev/null; then
-        sudo cp "$(command -v $cmd)" /home/user/bin/
+        sudo cp "$(command -v $cmd)" /home/jailed/bin/
     else
         echo "⚠️ Binaire $cmd introuvable, installation peut-être incomplète."
     fi
@@ -56,26 +56,41 @@ done
 
 # Copie des bibliothèques nécessaires à `bash`, `python3`, et `vim`
 echo "✅ Copie des bibliothèques requises..."
-BIN_LIBS=(/bin/bash /usr/bin/python3 /usr/bin/vim)
+BIN_LIBS=(/bin/bash /usr/bin/python3 /usr/bin/vim /usr/bin/env)
 
 for bin in "${BIN_LIBS[@]}"; do
-    ldd "$bin" | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp -v '{}' /home/user/lib/ 2>/dev/null
+    if [ -f "$bin" ]; then
+        ldd "$bin" 2>/dev/null | awk '{print $3}' | grep -v '(' | xargs -I '{}' sudo cp -v '{}' /home/jailed/lib/ 2>/dev/null
+    fi
 done
+
+# Création des devices nécessaires
+echo "✅ Création des devices..."
+sudo mknod -m 666 /home/jailed/dev/null c 1 3 2>/dev/null
+sudo mknod -m 666 /home/jailed/dev/tty c 5 0 2>/dev/null
+sudo mknod -m 444 /home/jailed/dev/urandom c 1 9 2>/dev/null
 
 # Ajout d'une vulnérabilité dans sudoers : Élévation de privilège via `vim`
 echo "✅ Ajout d'une faille sudo (élévation de privilège avec vim)..."
-echo "user    ALL=(ALL)   NOPASSWD: /usr/bin/vim" | sudo tee -a /etc/sudoers.d/vuln_vim
+echo "jailed    ALL=(ALL)   NOPASSWD: /usr/bin/vim" | sudo tee /etc/sudoers.d/vuln_vim
 
 # Vérification et test de la JAIL vulnérable
 echo "✅ Vérification de l'environnement..."
-sudo chroot /home/user /bin/bash -c "echo 'Bash fonctionne dans la JAIL !'"
+sudo chroot /home/jailed /bin/bash -c "echo 'Bash fonctionne dans la JAIL !'"
 
 # Correction des permissions finales
-sudo chown -R root:root /home/user
-sudo chmod -R 755 /home/user
+sudo chown -R root:root /home/jailed
+sudo chmod -R 755 /home/jailed
+sudo chmod 777 /home/jailed/tmp
 
+echo ""
 echo "✅ Installation terminée !"
+echo "═══════════════════════════════════════════════════════════════"
 echo "🎯 JAIL vulnérable mise en place avec Python3 et Vim."
-echo "👉 Connecte-toi avec : ssh user@<IP>"
-echo "💀 Pour sortir de la JAIL : python3 -c 'import pty;pty.spawn(\"/bin/bash\")'"
-echo "🔓 Pour devenir root : sudo -u root /usr/bin/vim + ':set shell=/bin/bash|shell'"
+echo ""
+echo "📋 IDENTIFIANTS :"
+echo "   Utilisateur : jailed"
+echo "   Mot de passe : password123"
+echo ""
+echo "👉 Connexion : ssh jailed@<IP>"
+echo "═══════════════════════════════════════════════════════════════"

@@ -33,21 +33,9 @@ fi
 CLEANED=0
 
 # ═══════════════════════════════════════════════════════════════════
-# 1. Suppression de l'utilisateur "user"
+# 1. Suppression de l'utilisateur "jailed"
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[1/8] Vérification de l'utilisateur 'user'...${NC}"
-if id "user" &>/dev/null; then
-    userdel -r user 2>/dev/null
-    echo -e "${GREEN}   ✅ Utilisateur 'user' supprimé${NC}"
-    ((CLEANED++))
-else
-    echo -e "   ⏭️  Utilisateur 'user' non trouvé (OK)"
-fi
-
-# ═══════════════════════════════════════════════════════════════════
-# 2. Suppression de l'utilisateur "jailed" (ancienne version)
-# ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[2/8] Vérification de l'utilisateur 'jailed'...${NC}"
+echo -e "${YELLOW}[1/7] Vérification de l'utilisateur 'jailed'...${NC}"
 if id "jailed" &>/dev/null; then
     userdel -r jailed 2>/dev/null
     echo -e "${GREEN}   ✅ Utilisateur 'jailed' supprimé${NC}"
@@ -57,9 +45,9 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 3. Suppression de la règle sudo vulnérable
+# 2. Suppression de la règle sudo vulnérable
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[3/8] Vérification des règles sudo vulnérables...${NC}"
+echo -e "${YELLOW}[2/7] Vérification des règles sudo vulnérables...${NC}"
 if [ -f /etc/sudoers.d/vuln_vim ]; then
     rm -f /etc/sudoers.d/vuln_vim
     echo -e "${GREEN}   ✅ /etc/sudoers.d/vuln_vim supprimé${NC}"
@@ -78,29 +66,10 @@ for f in /etc/sudoers.d/vuln_*; do
 done
 
 # ═══════════════════════════════════════════════════════════════════
-# 4. Suppression des répertoires du lab
+# 3. Suppression des répertoires du lab
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[4/8] Suppression des répertoires du lab...${NC}"
+echo -e "${YELLOW}[3/7] Suppression des répertoires du lab...${NC}"
 
-# Ancien chemin /var/www/html
-if [ -d /var/www/html ]; then
-    rm -rf /var/www/html
-    echo -e "${GREEN}   ✅ /var/www/html supprimé (ancien chemin)${NC}"
-    ((CLEANED++))
-else
-    echo -e "   ⏭️  /var/www/html non trouvé (OK)"
-fi
-
-# Nouveau chemin /home/user
-if [ -d /home/user ]; then
-    rm -rf /home/user
-    echo -e "${GREEN}   ✅ /home/user supprimé${NC}"
-    ((CLEANED++))
-else
-    echo -e "   ⏭️  /home/user non trouvé (OK)"
-fi
-
-# /home/jailed (ancienne version)
 if [ -d /home/jailed ]; then
     rm -rf /home/jailed
     echo -e "${GREEN}   ✅ /home/jailed supprimé${NC}"
@@ -110,19 +79,13 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 5. Suppression des tâches cron malveillantes
+# 4. Suppression des tâches cron malveillantes
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[5/8] Vérification des tâches cron vulnérables...${NC}"
+echo -e "${YELLOW}[4/7] Vérification des tâches cron vulnérables...${NC}"
 
 if [ -f /etc/cron.d/vuln_cron ]; then
     rm -f /etc/cron.d/vuln_cron
     echo -e "${GREEN}   ✅ /etc/cron.d/vuln_cron supprimé${NC}"
-    ((CLEANED++))
-fi
-
-if [ -f /home/user/etc/cron.d/vuln_cron ]; then
-    rm -f /home/user/etc/cron.d/vuln_cron
-    echo -e "${GREEN}   ✅ Cron dans jail supprimé${NC}"
     ((CLEANED++))
 fi
 
@@ -138,12 +101,12 @@ done
 echo -e "   ⏭️  Tâches cron vérifiées"
 
 # ═══════════════════════════════════════════════════════════════════
-# 6. Vérification et correction des binaires SUID suspects
+# 5. Vérification et correction des binaires SUID suspects
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[6/8] Recherche de binaires SUID suspects...${NC}"
+echo -e "${YELLOW}[5/7] Recherche de binaires SUID suspects...${NC}"
 
 # Liste des binaires qui ne devraient JAMAIS être SUID
-SUSPECT_SUIDS=("/bin/bash" "/usr/bin/bash" "/bin/sh" "/usr/bin/python3" "/usr/bin/python" "/usr/bin/env" "/home/user/bin/bash" "/home/user/bin/python3" "/home/user/bin/env" "/var/www/html/bin/bash" "/var/www/html/bin/python3" "/var/www/html/bin/env")
+SUSPECT_SUIDS=("/bin/bash" "/usr/bin/bash" "/bin/sh" "/usr/bin/python3" "/usr/bin/python" "/usr/bin/env")
 
 for bin in "${SUSPECT_SUIDS[@]}"; do
     if [ -f "$bin" ] && [ -u "$bin" ]; then
@@ -154,7 +117,7 @@ for bin in "${SUSPECT_SUIDS[@]}"; do
 done
 
 # Recherche générale dans /tmp
-for f in /tmp/rootbash /tmp/exploit.so /var/www/html/tmp/rootbash /home/user/tmp/rootbash; do
+for f in /tmp/rootbash /tmp/exploit.so; do
     if [ -f "$f" ]; then
         rm -f "$f"
         echo -e "${GREEN}   ✅ $f supprimé${NC}"
@@ -165,9 +128,9 @@ done
 echo -e "   ⏭️  Binaires SUID vérifiés"
 
 # ═══════════════════════════════════════════════════════════════════
-# 7. Suppression du groupe sshchroot si existant
+# 6. Suppression du groupe sshchroot si existant
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[7/8] Vérification du groupe sshchroot...${NC}"
+echo -e "${YELLOW}[6/7] Vérification du groupe sshchroot...${NC}"
 if getent group sshchroot &>/dev/null; then
     groupdel sshchroot 2>/dev/null
     echo -e "${GREEN}   ✅ Groupe 'sshchroot' supprimé${NC}"
@@ -177,9 +140,9 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 8. Vérification des permissions /etc/passwd
+# 7. Vérification des permissions /etc/passwd
 # ═══════════════════════════════════════════════════════════════════
-echo -e "${YELLOW}[8/8] Vérification des permissions /etc/passwd...${NC}"
+echo -e "${YELLOW}[7/7] Vérification des permissions /etc/passwd...${NC}"
 PASSWD_PERMS=$(stat -c '%a' /etc/passwd)
 if [ "$PASSWD_PERMS" != "644" ]; then
     chmod 644 /etc/passwd
@@ -191,7 +154,6 @@ fi
 
 # Vérifier s'il y a un utilisateur "hacker" dans /etc/passwd
 if grep -q "^hacker:" /etc/passwd; then
-    # Supprimer la ligne hacker
     sed -i '/^hacker:/d' /etc/passwd
     echo -e "${GREEN}   ✅ Utilisateur 'hacker' supprimé de /etc/passwd${NC}"
     ((CLEANED++))

