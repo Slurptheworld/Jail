@@ -22,6 +22,14 @@ sudo systemctl restart "$SSH_SERVICE"
 
 # Création du groupe et de l'utilisateur pour la JAIL
 echo "✅ Création de l'utilisateur JAIL vulnérable..."
+
+# Vérifier si l'utilisateur existe déjà
+if id "user" &>/dev/null; then
+    echo "⚠️  L'utilisateur 'user' existe déjà. Suppression et recréation..."
+    sudo userdel -r user 2>/dev/null
+    sudo rm -rf /home/user 2>/dev/null
+fi
+
 sudo useradd -m -d /home/user -s /bin/rbash user
 echo "user:password123" | sudo chpasswd  # Définir un mot de passe
 
