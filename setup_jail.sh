@@ -89,16 +89,16 @@ if id "jailed" &>/dev/null; then
     rm -rf "$JAIL" 2>/dev/null
 fi
 
-# Création avec shell restreint rbash
-useradd -m -d "$JAIL" -s /bin/rbash jailed
+# Création avec bash (l'isolation est assurée par le chroot SSH, pas par rbash)
+useradd -m -d "$JAIL" -s /bin/bash jailed
 echo "jailed:password123" | chpasswd
 
 # ═══════════════════════════════════════════════════════════════════
-# 4. Configuration du home et du PATH restreint
+# 4. Configuration du home et du PATH
 # ═══════════════════════════════════════════════════════════════════
 echo "✅ Configuration du home de l'utilisateur..."
 mkdir -p "$JAIL/bin"
-echo 'export PATH=/home/jailed/bin' | tee -a "$JAIL/.bashrc" > /dev/null
+echo 'export PATH=/bin:/usr/bin' | tee -a "$JAIL/.bashrc" > /dev/null
 
 # ═══════════════════════════════════════════════════════════════════
 # 5. Création de la structure du chroot
@@ -120,7 +120,7 @@ echo "✅ Copie des binaires essentiels..."
 #   id/whoami → vérifier l'élévation de privilèges
 #   su    → basculer sur un autre compte
 #   gcc   → compiler les exploits (LD_PRELOAD)
-BINAIRES=(bash rbash ls cat mkdir rm touch python3 vim env find grep chmod id whoami su gcc)
+BINAIRES=(bash ls cat mkdir rm touch python3 vim env find grep chmod id whoami su gcc)
 
 for cmd in "${BINAIRES[@]}"; do
     # Récupérer le chemin réel du binaire (ignore les builtins)

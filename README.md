@@ -24,7 +24,7 @@ Ce lab permet de pratiquer différentes techniques d'élévation de privilèges 
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │            CHROOT JAIL (/home/jailed)               │   │
 │   │                                                     │   │
-│   │   /bin/       → bash, rbash, ls, cat, mkdir, rm,   │   │
+│   │   /bin/       → bash, ls, cat, mkdir, rm,           │   │
 │   │                 touch, python3, vim, env, find,     │   │
 │   │                 grep, chmod, id, whoami, su, gcc    │   │
 │   │   /lib/       → Bibliothèques (arborescence réelle)│   │
@@ -44,7 +44,7 @@ Ce lab permet de pratiquer différentes techniques d'élévation de privilèges 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Le script `setup_jail.sh` configure automatiquement le **chroot SSH** via un bloc `Match User jailed` dans `/etc/ssh/sshd_config`. L'utilisateur `jailed` est ainsi réellement enfermé dans `/home/jailed` dès la connexion SSH.
+Le script `setup_jail.sh` configure automatiquement le **chroot SSH** via un bloc `Match User jailed` dans `/etc/ssh/sshd_config`. L'utilisateur `jailed` est ainsi réellement enfermé dans `/home/jailed` dès la connexion SSH. L'isolation repose entièrement sur le `ChrootDirectory` SSH (pas sur un shell restreint).
 
 ---
 
@@ -125,7 +125,7 @@ sudo ./vuln_sudo_vim.sh   # Active Sudo + Vim (installe sudo, PAM, NSS dans le c
 ### Binaires disponibles dans le chroot
 
 ```
-bash  rbash  ls  cat  mkdir  rm  touch  python3  vim  env
+bash  ls  cat  mkdir  rm  touch  python3  vim  env
 find  grep  chmod  id  whoami  su  gcc
 ```
 
