@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lab Jail Vulnérable v2 — Guide Pédagogique</title>
+<title>Lab Jail Vulnérable v2.3 — Guide Pédagogique</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -630,7 +630,7 @@
 <!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero">
   <div class="hero-grid"></div>
-  <span class="badge">Lab Cybersecurite v2 — Environnement isole</span>
+  <span class="badge">Lab Cybersecurite v2.3 — Environnement isole</span>
   <h1>Chroot Jail <span class="glow">Vulnerable</span></h1>
   <p class="hero-sub">
     Guide pedagogique interactif pour comprendre, exploiter et remedier les failles d'elevation de privileges dans un environnement chroote SSH.
@@ -717,9 +717,10 @@
 │                           <span class="comment"># id, whoami, su, gcc</span>
 ├── <span class="path">lib/</span> &amp; <span class="path">lib64/</span>          <span class="comment"># Bibliotheques dynamiques (arborescence reelle)</span>
 ├── <span class="path">etc/</span>                    <span class="comment"># Fichiers de config</span>
-│   ├── passwd, group       <span class="comment"># Crees par setup_jail.sh (enrichis par vuln_sudo_vim.sh)</span>
+│   ├── passwd, group, shadow <span class="comment"># Crees par setup_jail.sh</span>
+│   ├── pam.d/              <span class="comment"># PAM (cree par setup_jail.sh)</span>
+│   ├── nsswitch.conf       <span class="comment"># NSS (cree par setup_jail.sh)</span>
 │   ├── sudoers, sudoers.d  <span class="comment"># Crees par vuln_sudo_vim.sh</span>
-│   ├── pam.d/              <span class="comment"># PAM (cree par vuln_sudo_vim.sh)</span>
 │   └── <span class="path">cron.d/</span>            <span class="comment"># Cible : vuln_cron.sh</span>
 ├── <span class="path">proc/</span>                   <span class="comment"># Monte par vuln_sudo_vim.sh</span>
 ├── <span class="path">tmp/</span>                    <span class="comment"># Zone d'ecriture pour les exploits</span>
@@ -1148,7 +1149,7 @@ void <span class="cmd">_init</span>() {
       <div class="vuln-section">
         <h3><span class="icon">🛠️</span> Mise en place (vuln_sudo_vim.sh)</h3>
         <p>
-          Ce script installe <code>sudo</code> dans le chroot avec toutes ses dependances (PAM, NSS, passwd/group/shadow, /proc) et cree la regle sudoers vulnerables.
+          Ce script installe <code>sudo</code> dans le chroot et cree la regle sudoers vulnerable. PAM, NSS et shadow sont deja presents (installes par <code>setup_jail.sh</code>).
         </p>
         <div class="code-block">
           <div class="code-header"><span>bash — activation</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>
@@ -1156,12 +1157,10 @@ void <span class="cmd">_init</span>() {
 <span class="cmd">sudo</span> <span class="path">./vuln_sudo_vim.sh</span>
 
 <span class="comment"># Ce script installe dans le chroot :</span>
-<span class="comment"># • sudo (binaire SUID)</span>
-<span class="comment"># • PAM (pam_permit.so pour NOPASSWD)</span>
-<span class="comment"># • NSS (nsswitch.conf + libnss_files)</span>
-<span class="comment"># • /etc/passwd, /etc/group, /etc/shadow</span>
+<span class="comment"># • sudo (binaire SUID + libs)</span>
 <span class="comment"># • /etc/sudoers + /etc/sudoers.d/vuln_vim</span>
-<span class="comment"># • /proc (monte)</span></pre>
+<span class="comment"># • /proc (monte)</span>
+<span class="comment"># (PAM, NSS, shadow deja presents via setup_jail.sh)</span></pre>
         </div>
         <div class="code-block">
           <div class="code-header"><span>bash — regle sudoers creee</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div>

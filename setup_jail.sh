@@ -5,7 +5,7 @@
 # ║  Ce script crée un environnement chroot SSH isolé avec un jeu limité     ║
 # ║  de binaires pour pratiquer l'élévation de privilèges Linux.             ║
 # ║                                                                           ║
-# ║  Corrections v2.2 :                                                       ║
+# ║  Corrections v2.3 :                                                       ║
 # ║   - echo/pwd retirés (builtins bash, pas de binaire sur disque)          ║
 # ║   - Installation automatique de vim, python3 et gcc si absents           ║
 # ║   - Copie des libs avec arborescence complète (fix chroot crash)         ║
@@ -13,10 +13,10 @@
 # ║   - Copie des libs de TOUS les binaires (pas seulement bash/python/vim)  ║
 # ║   - Ajout des binaires manquants (find, grep, chmod, id, whoami, su, gcc)║
 # ║   - Configuration automatique du chroot SSH (Match User dans sshd_config)║
-# ║   - Retrait de la règle sudoers vim (déplacée dans vuln_sudo_vim.sh)     ║
 # ║   - bash au lieu de rbash (isolation par ChrootDirectory SSH)            ║
 # ║   - Permissions /dev restaurées après chmod -R 755                       ║
-# ║   - /etc/passwd et /etc/group créés dans le chroot                       ║
+# ║   - /etc/passwd, /etc/group et /etc/shadow créés dans le chroot          ║
+# ║   - PAM + NSS installés de base (su et sudo fonctionnent)               ║
 # ║                                                                           ║
 # ║  Usage : sudo ./setup_jail.sh                                            ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -223,7 +223,96 @@ chmod 644 "$JAIL/etc/passwd"
 chmod 644 "$JAIL/etc/group"
 
 # ═══════════════════════════════════════════════════════════════════
-# 10. Correction des permissions finales (ChrootDirectory exige root:root 755)
+# 10. Configuration PAM dans le chroot
+# ═══════════════════════════════════════════════════════════════════
+# PAM est nécessaire pour su et sudo. Sans PAM, su retourne
+# "Critical error - immediate abort" et sudo ne fonctionne pas.
+# On installe une config minimale avec pam_permit.so (autorise tout).
+# ═══════════════════════════════════════════════════════════════════
+echo "✅ Configuration PAM dans le chroot..."
+mkdir -p "$JAIL/etc/pam.d"
+mkdir -p "$JAIL/etc/security"
+
+cat > "$JAIL/etc/pam.d/su" <<'PAMEOF'
+#%PAM-1.0
+auth       sufficient   pam_permit.so
+account    sufficient   pam_permit.so
+session    sufficient   pam_permit.so
+PAMEOF
+
+cat > "$JAIL/etc/pam.d/sudo" <<'PAMEOF'
+#%PAM-1.0
+auth       sufficient   pam_permit.so
+account    sufficient   pam_permit.so
+session    sufficient   pam_permit.so
+PAMEOF
+
+cat > "$JAIL/etc/pam.d/other" <<'PAMEOF'
+auth       sufficient   pam_permit.so
+account    sufficient   pam_permit.so
+session    sufficient   pam_permit.so
+PAMEOF
+
+# Copier les modules PAM essentiels
+for PAM_DIR in /lib/x86_64-linux-gnu/security /usr/lib/x86_64-linux-gnu/security; do
+    if [ -d "$PAM_DIR" ]; then
+        mkdir -p "$JAIL${PAM_DIR}"
+        for mod in pam_permit.so pam_deny.so pam_unix.so pam_env.so pam_limits.so; do
+            if [ -f "$PAM_DIR/$mod" ]; then
+                cp -n "$PAM_DIR/$mod" "$JAIL${PAM_DIR}/" 2>/dev/null
+                # Copier les dépendances de chaque module PAM
+                copier_libs "$PAM_DIR/$mod"
+            fi
+        done
+        echo "   ✅ Modules PAM copiés depuis $PAM_DIR"
+    fi
+done
+
+# ═══════════════════════════════════════════════════════════════════
+# 11. Configuration NSS dans le chroot
+# ═══════════════════════════════════════════════════════════════════
+# NSS (Name Service Switch) permet la résolution UID → nom d'utilisateur.
+# Sans NSS, whoami/id ne trouvent pas les noms et su/sudo échouent.
+# ═══════════════════════════════════════════════════════════════════
+echo "✅ Configuration NSS dans le chroot..."
+
+cat > "$JAIL/etc/nsswitch.conf" <<'NSSEOF'
+passwd:     files
+group:      files
+shadow:     files
+NSSEOF
+
+# Copier les bibliothèques NSS
+for NSS_DIR in /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu; do
+    if [ -d "$NSS_DIR" ]; then
+        mkdir -p "$JAIL${NSS_DIR}"
+        for nss in libnss_files.so.2 libnss_compat.so.2; do
+            if [ -f "$NSS_DIR/$nss" ]; then
+                cp -n "$NSS_DIR/$nss" "$JAIL${NSS_DIR}/" 2>/dev/null
+                copier_libs "$NSS_DIR/$nss"
+            fi
+        done
+    fi
+done
+
+# ═══════════════════════════════════════════════════════════════════
+# 12. Création de /etc/shadow dans le chroot
+# ═══════════════════════════════════════════════════════════════════
+# su et sudo ont besoin de /etc/shadow pour vérifier les comptes.
+# On copie le hash du mot de passe de jailed depuis le système hôte.
+# ═══════════════════════════════════════════════════════════════════
+echo "✅ Création de /etc/shadow dans le chroot..."
+JAILED_HASH=$(grep "^jailed:" /etc/shadow | cut -d: -f2)
+
+cat > "$JAIL/etc/shadow" <<EOF
+root:*:19000:0:99999:7:::
+jailed:${JAILED_HASH}:19000:0:99999:7:::
+EOF
+
+chmod 640 "$JAIL/etc/shadow"
+
+# ═══════════════════════════════════════════════════════════════════
+# 13. Correction des permissions finales (ChrootDirectory exige root:root 755)
 # ═══════════════════════════════════════════════════════════════════
 echo "✅ Application des permissions..."
 # IMPORTANT : Pour que ChrootDirectory SSH fonctionne,
@@ -239,7 +328,7 @@ chmod 666 "$JAIL/dev/tty" 2>/dev/null
 chmod 444 "$JAIL/dev/urandom" 2>/dev/null
 
 # ═══════════════════════════════════════════════════════════════════
-# 11. Configuration du chroot SSH (Match User)
+# 14. Configuration du chroot SSH (Match User)
 # ═══════════════════════════════════════════════════════════════════
 # FIX v2 : Sans cette configuration, l'utilisateur jailed se connecte
 #           en SSH et arrive sur le système COMPLET au lieu d'être
@@ -271,7 +360,7 @@ systemctl restart "$SSH_SERVICE"
 echo "   ✅ Service SSH redémarré"
 
 # ═══════════════════════════════════════════════════════════════════
-# 12. Test de validation du chroot
+# 15. Test de validation du chroot
 # ═══════════════════════════════════════════════════════════════════
 echo "✅ Vérification de l'environnement..."
 echo ""

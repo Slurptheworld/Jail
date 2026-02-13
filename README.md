@@ -1,4 +1,4 @@
-# JAIL v2 - Laboratoire de Privilege Escalation Linux
+# JAIL v2.3 - Laboratoire de Privilege Escalation Linux
 
 Environnement chroot SSH vulnérable pour l'apprentissage des techniques de privilege escalation sous Linux.
 
@@ -82,7 +82,7 @@ chmod +x *.sh
 ./setup_jail.sh
 ```
 
-> **Note :** Le script `setup_jail.sh` installe automatiquement les dépendances manquantes (vim, python3, gcc), crée `/etc/passwd` et `/etc/group` dans le chroot (nécessaires pour `whoami`, `id`, `su`), et configure le chroot SSH.
+> **Note :** Le script `setup_jail.sh` installe automatiquement les dépendances manquantes (vim, python3, gcc), crée `/etc/passwd`, `/etc/group` et `/etc/shadow` dans le chroot, configure **PAM** et **NSS** (nécessaires pour `su`, `sudo`, `whoami`, `id`), et configure le chroot SSH.
 
 ---
 
@@ -111,6 +111,8 @@ Chaque script active une vulnérabilité spécifique dans l'environnement chroot
 | `vuln_ldpreload.sh` | LD_PRELOAD exploitable     | Shared library injection                        |
 | `vuln_sudo_vim.sh`  | Sudo + Vim escape          | `sudo vim -c ':!/bin/bash'`                     |
 
+> **Note v2.3 :** PAM, NSS et `/etc/shadow` sont installés de base par `setup_jail.sh`. Le script `vuln_sudo_vim.sh` n'installe plus que `sudo`, la règle sudoers et `/proc`.
+
 ### Activation d'une vulnérabilité
 
 ```bash
@@ -119,7 +121,7 @@ sudo ./vuln_suid.sh       # Active SUID
 sudo ./vuln_passwd.sh     # Active passwd writable
 sudo ./vuln_cron.sh       # Active cron vulnérable
 sudo ./vuln_ldpreload.sh  # Active LD_PRELOAD
-sudo ./vuln_sudo_vim.sh   # Active Sudo + Vim (installe sudo, PAM, NSS dans le chroot)
+sudo ./vuln_sudo_vim.sh   # Active Sudo + Vim (installe sudo + sudoers + /proc)
 ```
 
 ### Binaires disponibles dans le chroot

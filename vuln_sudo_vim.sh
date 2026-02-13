@@ -2,10 +2,9 @@
 # ╔═══════════════════════════════════════════════════════════════════════════╗
 # ║  VULN SUDO VIM — Active la vulnérabilité Sudo + Vim dans le chroot      ║
 # ║                                                                           ║
-# ║  Ce script installe sudo dans le chroot avec toutes ses dépendances      ║
-# ║  (PAM, NSS, passwd/group/shadow) et crée une règle sudoers permettant   ║
-# ║  à l'utilisateur jailed d'exécuter vim en tant que root sans mot de     ║
-# ║  passe. L'élève doit découvrir et exploiter cette misconfiguration.      ║
+# ║  Ce script installe sudo dans le chroot et crée une règle sudoers       ║
+# ║  permettant à jailed d'exécuter vim en root sans mot de passe.          ║
+# ║  PAM, NSS, passwd/group/shadow sont déjà installés par setup_jail.sh.   ║
 # ║                                                                           ║
 # ║  Exploitation attendue :                                                  ║
 # ║    sudo -l                     → repérer vim                             ║
@@ -81,93 +80,7 @@ chmod 4755 "$JAIL/bin/sudo"
 copier_libs "$SUDO_PATH"
 
 # ═══════════════════════════════════════════════════════════════════
-# 3. Configuration PAM minimale (nécessaire pour sudo)
-# ═══════════════════════════════════════════════════════════════════
-echo "   ✅ Configuration PAM..."
-mkdir -p "$JAIL/etc/pam.d"
-
-# PAM config pour sudo : pam_permit autorise tout (suffisant car NOPASSWD)
-cat > "$JAIL/etc/pam.d/sudo" <<'EOF'
-auth       sufficient   pam_permit.so
-account    sufficient   pam_permit.so
-session    sufficient   pam_permit.so
-EOF
-
-cat > "$JAIL/etc/pam.d/other" <<'EOF'
-auth       sufficient   pam_permit.so
-account    sufficient   pam_permit.so
-session    sufficient   pam_permit.so
-EOF
-
-# Copier les modules PAM nécessaires
-PAM_DIR=$(dirname "$(find /lib /usr/lib -name "pam_permit.so" 2>/dev/null | head -1)" 2>/dev/null)
-if [ -n "$PAM_DIR" ] && [ -d "$PAM_DIR" ]; then
-    mkdir -p "$JAIL$PAM_DIR"
-    for pam_mod in pam_permit.so pam_deny.so pam_unix.so; do
-        if [ -f "$PAM_DIR/$pam_mod" ]; then
-            cp "$PAM_DIR/$pam_mod" "$JAIL$PAM_DIR/"
-            # Copier les dépendances de chaque module PAM
-            copier_libs "$PAM_DIR/$pam_mod"
-        fi
-    done
-    echo "   ✅ Modules PAM copiés depuis $PAM_DIR"
-fi
-
-# ═══════════════════════════════════════════════════════════════════
-# 4. Configuration NSS (Name Service Switch)
-# ═══════════════════════════════════════════════════════════════════
-echo "   ✅ Configuration NSS..."
-
-# nsswitch.conf minimal : résolution par fichiers locaux uniquement
-cat > "$JAIL/etc/nsswitch.conf" <<'EOF'
-passwd:     files
-group:      files
-shadow:     files
-EOF
-
-# Copier les bibliothèques NSS nécessaires
-for nss_lib in libnss_files.so.2 libnss_compat.so.2; do
-    NSS_PATH=$(find /lib /usr/lib -name "$nss_lib" 2>/dev/null | head -1)
-    if [ -n "$NSS_PATH" ] && [ -f "$NSS_PATH" ]; then
-        mkdir -p "$JAIL$(dirname "$NSS_PATH")"
-        cp "$NSS_PATH" "$JAIL$NSS_PATH" 2>/dev/null
-        copier_libs "$NSS_PATH"
-    fi
-done
-
-# ═══════════════════════════════════════════════════════════════════
-# 5. Création des fichiers passwd/group/shadow dans le chroot
-# ═══════════════════════════════════════════════════════════════════
-echo "   ✅ Création des fichiers d'authentification..."
-
-# Récupérer les vrais UID/GID de l'utilisateur jailed
-JAILED_UID=$(id -u jailed 2>/dev/null)
-JAILED_GID=$(id -g jailed 2>/dev/null)
-
-# /etc/passwd dans le chroot
-cat > "$JAIL/etc/passwd" <<EOF
-root:x:0:0:root:/root:/bin/bash
-jailed:x:${JAILED_UID}:${JAILED_GID}:jailed:/home/jailed:/bin/bash
-EOF
-
-# /etc/group dans le chroot
-cat > "$JAIL/etc/group" <<EOF
-root:x:0:
-jailed:x:${JAILED_GID}:
-EOF
-
-# /etc/shadow dans le chroot (mot de passe verrouillé, sudo est NOPASSWD)
-cat > "$JAIL/etc/shadow" <<EOF
-root:*:19000:0:99999:7:::
-jailed:*:19000:0:99999:7:::
-EOF
-
-chmod 644 "$JAIL/etc/passwd"
-chmod 644 "$JAIL/etc/group"
-chmod 640 "$JAIL/etc/shadow"
-
-# ═══════════════════════════════════════════════════════════════════
-# 6. Configuration sudoers dans le chroot
+# 3. Configuration sudoers dans le chroot
 # ═══════════════════════════════════════════════════════════════════
 echo "   ✅ Configuration sudoers dans le chroot..."
 mkdir -p "$JAIL/etc/sudoers.d"
@@ -189,7 +102,7 @@ chmod 440 "$JAIL/etc/sudoers"
 chmod 440 "$JAIL/etc/sudoers.d/vuln_vim"
 
 # ═══════════════════════════════════════════════════════════════════
-# 7. Monter /proc dans le chroot (sudo en a besoin)
+# 4. Monter /proc dans le chroot (sudo en a besoin)
 # ═══════════════════════════════════════════════════════════════════
 echo "   ✅ Montage de /proc dans le chroot..."
 mkdir -p "$JAIL/proc"
@@ -201,14 +114,14 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# 8. Permissions
+# 5. Permissions
 # ═══════════════════════════════════════════════════════════════════
-# S'assurer que sudo reste SUID après le chown global
+# S'assurer que sudo reste SUID après un éventuel chown
 chown root:root "$JAIL/bin/sudo"
 chmod 4755 "$JAIL/bin/sudo"
 
 # ═══════════════════════════════════════════════════════════════════
-# 9. Test : vérifier que sudo fonctionne dans le chroot
+# 6. Test : vérifier que sudo fonctionne dans le chroot
 # ═══════════════════════════════════════════════════════════════════
 echo ""
 echo "✅ Test de sudo dans le chroot..."
@@ -230,11 +143,9 @@ echo "════════════════════════�
 echo ""
 echo "📋 Ce qui a été installé dans le chroot :"
 echo "   • sudo (SUID root)"
-echo "   • PAM (pam_permit.so)"
-echo "   • NSS (nsswitch.conf + libnss_files)"
-echo "   • /etc/passwd, /etc/group, /etc/shadow"
 echo "   • /etc/sudoers + /etc/sudoers.d/vuln_vim"
 echo "   • /proc monté"
+echo "   (PAM, NSS, passwd/group/shadow déjà présents via setup_jail.sh)"
 echo ""
 echo "💀 Exploitation attendue (côté élève en SSH) :"
 echo "   sudo -l                      → repérer (ALL) NOPASSWD: /bin/vim"
