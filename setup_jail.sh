@@ -326,6 +326,9 @@ chmod 777 "$JAIL/tmp"
 chmod 666 "$JAIL/dev/null" 2>/dev/null
 chmod 666 "$JAIL/dev/tty" 2>/dev/null
 chmod 444 "$JAIL/dev/urandom" 2>/dev/null
+# Restaurer le SUID sur su (nécessaire pour changer d'utilisateur)
+# Sans SUID, su ne peut pas appeler setuid()/setgid() → "Operation not permitted"
+chmod 4755 "$JAIL/bin/su" 2>/dev/null
 
 # ═══════════════════════════════════════════════════════════════════
 # 14. Configuration du chroot SSH (Match User)
